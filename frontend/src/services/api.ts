@@ -1,26 +1,22 @@
 import axios from 'axios'
 import { useAuthStore } from '@/store/authStore'
 
-const resolveApiUrl = (): string => {
-  const envUrl = import.meta.env.VITE_API_URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-  if (!envUrl) {
-    // Warn loudly in development; in production this should never happen.
-    console.warn(
-      '[api.ts] VITE_API_URL is not set. Falling back to localhost:8000 for development only.'
-    )
-    return 'http://localhost:8000'
+const resolveApiUrl = (): string => {
+  if (API_BASE_URL === "http://localhost:8000") {
+    console.warn('[api.ts] VITE_API_URL is not set. Falling back to localhost:8000 for development only.');
   }
 
   try {
-    const parsed = new URL(envUrl)
-    // In local dev, align hostname with the browser to avoid cookie issues.
+    const parsed = new URL(API_BASE_URL)
     if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
       parsed.hostname = window.location.hostname
     }
     return parsed.toString().replace(/\/$/, '')
-  } catch {
-    return envUrl.replace(/\/$/, '')
+  } catch (error) {
+    console.error("[API URL Parsing Error]:", error);
+    return API_BASE_URL.replace(/\/$/, '')
   }
 }
 
