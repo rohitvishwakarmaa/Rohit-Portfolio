@@ -1,16 +1,14 @@
 import axios from 'axios'
 import { useAuthStore } from '@/store/authStore'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const isProd = import.meta.env.PROD;
+const defaultURL = isProd ? "https://rohit-portfolio-baxj.onrender.com" : "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_URL || defaultURL;
 
 const resolveApiUrl = (): string => {
-  if (API_BASE_URL === "http://localhost:8000") {
-    console.warn('[api.ts] VITE_API_URL is not set. Falling back to localhost:8000 for development only.');
-  }
-
   try {
     const parsed = new URL(API_BASE_URL)
-    if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+    if (!isProd && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')) {
       parsed.hostname = window.location.hostname
     }
     return parsed.toString().replace(/\/$/, '')
