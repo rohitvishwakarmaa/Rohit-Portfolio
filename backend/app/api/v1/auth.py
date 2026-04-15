@@ -83,13 +83,13 @@ async def login_access_token(
     # GENERATE OTP (Sync with DB)
     otp = await auth_svc.generate_and_store_otp(db, str(user.id))
     
-    # SEND EMAIL (Await to catch errors)
-    email_res = await email_svc.send_otp(user.email, otp)
-    if email_res and email_res.get("status") == "error":
-        raise CustomException(
-            message=f"Failed to send OTP email: {email_res.get('message')}",
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+    # SEND EMAIL (Don't let SMTP timeout crash the login flow)
+    try:
+        email_res = await email_svc.send_otp(user.email, otp)
+        if email_res and email_res.get("status") == "error":
+            logger.error(f"SMTP Error: {email_res.get('message')}")
+    except Exception as e:
+        logger.error(f"SMTP Critical Error: {str(e)}")
     
     return success_response(
         data={
@@ -257,7 +257,10 @@ async def forgot_password(
     if user_doc:
         user = UserModel(**user_doc)
         otp = await auth_svc.generate_and_store_otp(db, str(user.id))
-        await email_svc.send_password_reset_otp(user.email, otp)
+        try:
+            await email_svc.send_password_reset_otp(user.email, otp)
+        except Exception as e:
+            logger.error(f"Forgot password SMTP failure: {str(e)}")
 
     return success_response(data={
         "message": "If that email is registered, a reset code has been sent."
