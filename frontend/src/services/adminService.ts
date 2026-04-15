@@ -165,6 +165,7 @@ export const adminService = {
         client_name: payload.client_name || '',
         created_at: new Date().toISOString(),
         is_featured: payload.is_featured,
+        source_type: payload.source_type,
       }
       if (onProgress) onProgress(100)
       return newVideo
@@ -237,6 +238,7 @@ export const adminService = {
         client_name: payload.client_name || '',
         created_at: new Date().toISOString(),
         is_featured: payload.is_featured ?? false,
+        source_type: payload.source_type ?? 'cloudinary',
       }
     }
 

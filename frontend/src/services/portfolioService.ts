@@ -14,6 +14,7 @@ export const MOCK_VIDEOS: Video[] = [
     client_name: 'NeuraLux Cosmetics',
     created_at: '2024-03-15',
     is_featured: true,
+    source_type: 'cloudinary',
   },
   {
     id: '2',
@@ -27,6 +28,7 @@ export const MOCK_VIDEOS: Video[] = [
     client_name: 'EchoSync Tech',
     created_at: '2024-02-20',
     is_featured: true,
+    source_type: 'cloudinary',
   },
   {
     id: '3',
@@ -40,6 +42,7 @@ export const MOCK_VIDEOS: Video[] = [
     client_name: 'Vortex Nutrition',
     created_at: '2024-01-10',
     is_featured: true,
+    source_type: 'cloudinary',
   },
   {
     id: '4',
@@ -53,6 +56,7 @@ export const MOCK_VIDEOS: Video[] = [
     client_name: 'Aurora Fashion',
     created_at: '2024-01-25',
     is_featured: false,
+    source_type: 'cloudinary',
   },
   {
     id: '5',
@@ -66,6 +70,7 @@ export const MOCK_VIDEOS: Video[] = [
     client_name: 'NeonGrid Software',
     created_at: '2023-12-05',
     is_featured: false,
+    source_type: 'cloudinary',
   },
   {
     id: '6',
@@ -79,6 +84,7 @@ export const MOCK_VIDEOS: Video[] = [
     client_name: 'Celestia Properties',
     created_at: '2023-11-18',
     is_featured: false,
+    source_type: 'cloudinary',
   },
   {
     id: '7',
@@ -92,6 +98,7 @@ export const MOCK_VIDEOS: Video[] = [
     client_name: 'Pulse Records',
     created_at: '2023-10-22',
     is_featured: true,
+    source_type: 'cloudinary',
   },
   {
     id: '8',
@@ -105,6 +112,7 @@ export const MOCK_VIDEOS: Video[] = [
     client_name: 'Zenith Finance',
     created_at: '2023-09-14',
     is_featured: false,
+    source_type: 'cloudinary',
   },
 ]
 
