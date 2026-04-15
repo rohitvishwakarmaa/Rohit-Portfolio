@@ -52,12 +52,33 @@ async def root():
 # ⚠️  No wildcard regex — only explicitly configured origins are allowed.
 allowed_origins = [str(o) for o in settings.BACKEND_CORS_ORIGINS] if settings.BACKEND_CORS_ORIGINS else []
 
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
+
+class DynamicVercelCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        origin = request.headers.get("origin")
+        
+        if request.method == "OPTIONS":
+            response = Response(status_code=200)
+        else:
+            response = await call_next(request)
+            
+        # Conditionally whitelist standard user origins dynamically:
+        if origin and ("vercel.app" in origin or "localhost" in origin or "rohitvishwakarma.com" in origin):
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type, Origin, access-control-allow-origin, x-requested-with"
+        return response
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"https://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Add dynamic top-level fallback
+app.add_middleware(DynamicVercelCORSMiddleware)
 
