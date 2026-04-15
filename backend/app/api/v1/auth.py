@@ -1,4 +1,7 @@
 from fastapi import APIRouter, Depends, status, Request, Response, BackgroundTasks
+import logging
+
+logger = logging.getLogger(__name__)
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Any
@@ -48,6 +51,7 @@ async def login_access_token(
     form_data: OAuth2PasswordRequestForm = Depends()
 ) -> Any:
     """OAuth2 compatible token login, injects standard JSONResponse with HttpOnly cookies."""
+    logger.info(f"Login attempt for: {form_data.username}")
     user_doc = await db["users"].find_one({"username": form_data.username})
     if not user_doc:
         user_doc = await db["users"].find_one({"email": form_data.username})
@@ -56,10 +60,16 @@ async def login_access_token(
     if user_doc and "hashed_password" in user_doc:
         try:
             is_valid = security.verify_password(form_data.password, user_doc["hashed_password"])
-        except Exception:
+        except Exception as e:
+            logger.error(f"Password verification failed with error: {str(e)}")
             is_valid = False
 
-    if not user_doc or not is_valid:
+    if not user_doc:
+        logger.warning(f"Login failed: User {form_data.username} not found")
+        raise CustomException("Incorrect email/username or password", status_code=status.HTTP_401_UNAUTHORIZED)
+    
+    if not is_valid:
+        logger.warning(f"Login failed: Invalid password for {form_data.username}")
         raise CustomException("Incorrect email/username or password", status_code=status.HTTP_401_UNAUTHORIZED)
         
     user = UserModel(**user_doc)
