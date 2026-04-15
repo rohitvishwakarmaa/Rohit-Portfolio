@@ -52,7 +52,14 @@ async def login_access_token(
     if not user_doc:
         user_doc = await db["users"].find_one({"email": form_data.username})
         
-    if not user_doc or not security.verify_password(form_data.password, user_doc["hashed_password"]):
+    is_valid = False
+    if user_doc and "hashed_password" in user_doc:
+        try:
+            is_valid = security.verify_password(form_data.password, user_doc["hashed_password"])
+        except Exception:
+            is_valid = False
+
+    if not user_doc or not is_valid:
         raise CustomException("Incorrect email/username or password", status_code=status.HTTP_401_UNAUTHORIZED)
         
     user = UserModel(**user_doc)
