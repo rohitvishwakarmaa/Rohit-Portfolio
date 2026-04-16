@@ -521,6 +521,10 @@ export default function AdminDashboard() {
             transition={{ duration: 0.4 }}
             className="max-w-3xl"
           >
+            <div className="mb-8">
+              <h2 className="text-xl font-bold text-gray-900">Upload (v2)</h2>
+              <p className="text-gray-500 text-xs mt-0.5">Add a new video project</p>
+            </div>
             {uploadSuccess && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
