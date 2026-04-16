@@ -190,18 +190,28 @@ export const adminService = {
         cloudForm.append('signature', signature)
         cloudForm.append('folder', folder)
 
-        const cloudRes = await axios.post(
-          `https://api.cloudinary.com/v1_1/${cloud_name}/video/upload`,
-          cloudForm,
-          {
-            onUploadProgress: (progressEvent) => {
-              if (onProgress && progressEvent.total) {
-                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-                onProgress(percentCompleted)
-              }
-            },
-          }
-        )
+        let cloudRes;
+        try {
+          cloudRes = await axios.post(
+            `https://api.cloudinary.com/v1_1/${cloud_name}/video/upload`,
+            cloudForm,
+            {
+              onUploadProgress: (progressEvent) => {
+                if (onProgress && progressEvent.total) {
+                  const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+                  onProgress(percentCompleted)
+                }
+              },
+            }
+          )
+        } catch (error: any) {
+          console.error("DEBUG: Direct Cloudinary Upload Failed:", {
+            error,
+            response: error.response?.data,
+            message: error.message
+          })
+          throw new Error(`Cloudinary Direct Upload Failed: ${error.response?.data?.error?.message || error.message || 'Check network connection'}`)
+        }
         public_id = cloudRes.data.public_id
       } else {
         // SERVER UPLOAD (For small files)

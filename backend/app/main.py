@@ -77,7 +77,7 @@ class DynamicVercelCORSMiddleware(BaseHTTPMiddleware):
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
             response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-            response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type, Origin, access-control-allow-origin, x-requested-with"
+            response.headers["Access-Control-Allow-Headers"] = "Accept, Authorization, Content-Type, Origin, access-control-allow-origin, x-requested-with, x-api-key, range"
         return response
 
 app.add_middleware(
