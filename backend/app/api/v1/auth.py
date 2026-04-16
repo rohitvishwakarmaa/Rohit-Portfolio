@@ -59,17 +59,19 @@ async def login_access_token(
     is_valid = False
     if user_doc and "hashed_password" in user_doc:
         try:
-            is_valid = security.verify_password(form_data.password, user_doc["hashed_password"])
+            stored_hash = user_doc["hashed_password"]
+            is_valid = security.verify_password(form_data.password, stored_hash)
+            logger.info(f"Password verification for '{form_data.username}': Result={is_valid}, PassLen={len(form_data.password)}, HashLen={len(stored_hash)}")
         except Exception as e:
-            logger.error(f"Password verification failed with error: {str(e)}")
+            logger.error(f"Password verification failed for '{form_data.username}' with error: {str(e)}")
             is_valid = False
 
     if not user_doc:
-        logger.warning(f"Login failed: User {form_data.username} not found")
+        logger.warning(f"Login failed: User '{form_data.username}' not found in database.")
         raise CustomException("Incorrect email/username or password", status_code=status.HTTP_401_UNAUTHORIZED)
     
     if not is_valid:
-        logger.warning(f"Login failed: Invalid password for {form_data.username}")
+        logger.warning(f"Login failed: Invalid password for user '{form_data.username}'.")
         raise CustomException("Incorrect email/username or password", status_code=status.HTTP_401_UNAUTHORIZED)
         
     user = UserModel(**user_doc)
