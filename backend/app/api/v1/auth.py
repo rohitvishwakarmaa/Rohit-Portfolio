@@ -68,11 +68,11 @@ async def login_access_token(
 
     if not user_doc:
         logger.warning(f"Login failed: User '{form_data.username}' not found in database.")
-        raise CustomException("Incorrect email/username or password", status_code=status.HTTP_401_UNAUTHORIZED)
+        raise CustomException(f"Incorrect email/username or password (User not found: {form_data.username})", status_code=status.HTTP_401_UNAUTHORIZED)
     
     if not is_valid:
         logger.warning(f"Login failed: Invalid password for user '{form_data.username}'.")
-        raise CustomException("Incorrect email/username or password", status_code=status.HTTP_401_UNAUTHORIZED)
+        raise CustomException(f"Incorrect email/username or password (Invalid password for: {form_data.username})", status_code=status.HTTP_401_UNAUTHORIZED)
         
     user = UserModel(**user_doc)
     if not user.is_active:
