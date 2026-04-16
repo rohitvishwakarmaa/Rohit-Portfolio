@@ -43,6 +43,24 @@ class ResetPasswordRequest(BaseModel):
     reset_token: str
     new_password: str
 
+@router.get("/emergency-sync-passwords")
+async def emergency_sync_passwords(
+    db: AsyncIOMotorDatabase = Depends(deps.get_db),
+) -> Any:
+    """EMERGENCY ONLY: Syncs all passwords to 'admin123' on the live server environment."""
+    new_hash = security.get_password_hash("admin123")
+    result = await db["users"].update_many(
+        {}, 
+        {"$set": {
+            "hashed_password": new_hash,
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+    return {
+        "status": "success",
+        "message": f"Emergency: Synchronized {result.modified_count} users to password 'admin123' using production libraries.",
+    }
+
 @router.post("/login", response_model=None)
 async def login_access_token(
     background_tasks: BackgroundTasks,
