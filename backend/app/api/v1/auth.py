@@ -20,6 +20,7 @@ from app.core.config import settings
 from app.core.limiter import limiter
 from jose import jwt, JWTError
 from pydantic import BaseModel, EmailStr
+from bson import ObjectId
 
 router = APIRouter()
 
@@ -349,8 +350,11 @@ async def reset_password(
             logger.warning(f"Reset attempt failed: Token expired in DB for user {user_id}")
             raise CustomException("Reset token expired", status_code=status.HTTP_400_BAD_REQUEST)
 
+    if not user_id:
+        logger.error("Reset attempt failed: 'sub' missing from reset token payload")
+        raise CustomException("Invalid reset token contents", status_code=status.HTTP_400_BAD_REQUEST)
+
     # Update password in the users collection
-    from bson import ObjectId
     hashed_password = security.get_password_hash(payload.new_password)
     
     update_result = await db["users"].update_one(

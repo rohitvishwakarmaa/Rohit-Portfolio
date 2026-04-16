@@ -59,10 +59,18 @@ class DynamicVercelCORSMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         origin = request.headers.get("origin")
         
-        if request.method == "OPTIONS":
-            response = Response(status_code=200)
-        else:
-            response = await call_next(request)
+        try:
+            if request.method == "OPTIONS":
+                response = Response(status_code=200)
+            else:
+                response = await call_next(request)
+        except Exception as e:
+            logger.error(f"CORS Middleware detected crash: {str(e)}", exc_info=True)
+            from fastapi.responses import JSONResponse
+            response = JSONResponse(
+                status_code=500,
+                content={"error": {"message": "Internal Server Error during execution", "details": str(e)}}
+            )
             
         # Conditionally whitelist standard user origins dynamically:
         if origin and ("vercel.app" in origin or "localhost" in origin or "rohitvishwakarma.com" in origin):
