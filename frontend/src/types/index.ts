@@ -65,6 +65,7 @@ export interface VideoUploadPayload {
   is_featured: boolean
   source_type: 'cloudinary' | 'youtube'
   youtube_url?: string
+  cloudinary_public_id?: string  // Pre-uploaded via Cloudinary Widget
 }
 
 // ─── Filter types ────────────────────────────────────────────────────────────

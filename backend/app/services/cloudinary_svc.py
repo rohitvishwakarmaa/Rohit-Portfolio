@@ -147,6 +147,21 @@ class CloudinaryService:
             raise RuntimeError(f"Cloudinary image upload failed: {e}")
 
     @staticmethod
+    def sign_params(params: dict) -> str:
+        """
+        Signs a dictionary of parameters for Cloudinary.
+        Used by the Cloudinary Upload Widget.
+        """
+        # Ensure timestamp is present if not already
+        if "timestamp" not in params:
+            params["timestamp"] = int(time.time())
+            
+        return cloudinary.utils.api_sign_request(
+            params,
+            cloudinary.config().api_secret
+        )
+
+    @staticmethod
     def generate_upload_signature(folder: str = "portfolio/ads") -> dict:
         """
         Generates a signature for direct frontend upload to Cloudinary.

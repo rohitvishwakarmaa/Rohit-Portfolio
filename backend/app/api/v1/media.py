@@ -29,6 +29,19 @@ async def get_video_upload_signature(
     return success_response(signature_data)
 
 
+@router.post("/upload/video/signature-widget")
+async def get_video_upload_signature_widget(
+    params: dict,
+    # current_user: UserModel = Depends(deps.get_current_active_superuser)
+) -> Any:
+    """
+    Generate signature for Cloudinary Upload Widget.
+    Accepts arbitrary parameters from the widget and signs them.
+    """
+    signature = cloudinary_svc.sign_params(params)
+    return success_response({"signature": signature})
+
+
 @router.post("/upload/video", response_model=None)
 async def upload_media_video(
     background_tasks: BackgroundTasks,

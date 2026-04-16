@@ -190,8 +190,8 @@ export default function AdminDashboard() {
     setIsUploading(true)
     setError(null)
     try {
-      if (form.source_type === 'cloudinary' && !form.video_file) {
-        throw new Error('Please select a video file first.')
+      if (form.source_type === 'cloudinary' && !form.video_file && !form.cloudinary_public_id) {
+        throw new Error('Please select a video file or use the secure cloud upload.')
       }
       if (form.source_type === 'youtube' && !form.youtube_url) {
         throw new Error('Please enter a YouTube URL.')
@@ -220,7 +220,7 @@ export default function AdminDashboard() {
       let errorMsg = 'Something went wrong during upload.'
       
       if (err.response?.status === 413) {
-        errorMsg = 'The video file is too large for the server (Max 100MB). Please compress it and try again.'
+        errorMsg = 'The video file is too large for the server (Max 100MB). For larger videos, please compress them or use the "Direct Upload" feature once available.'
       } else if (err.response?.data?.error?.message) {
         errorMsg = err.response.data.error.message
       } else if (err.response?.data?.detail) {
@@ -232,10 +232,75 @@ export default function AdminDashboard() {
       }
       
       setError(errorMsg)
+      setUploadProgress(0)
     } finally {
       setIsUploading(false)
     }
   }
+
+  const openCloudinaryWidget = async () => {
+    try {
+      // 1. Get the signature info first to obtain cloudName and apiKey
+      const sigRes = await adminService.getCloudinarySignature();
+      const { cloud_name, api_key } = sigRes;
+
+      // @ts-ignore
+      if (!window.cloudinary) {
+        throw new Error("Cloudinary library not loaded. Check your internet connection.");
+      }
+
+      // @ts-ignore
+      const widget = window.cloudinary.createUploadWidget(
+        {
+          cloudName: cloud_name,
+          apiKey: api_key,
+          uploadSignature: async (callback: any, params_to_sign: any) => {
+            try {
+              const res = await adminService.signWidgetParams(params_to_sign);
+              callback(res.signature);
+            } catch (err) {
+              console.error("Signature failed", err);
+              setError("Failed to generate secure signature for upload.");
+            }
+          },
+          folder: 'portfolio/ads',
+          resourceType: 'video',
+          clientAllowedFormats: ['mp4', 'mov', 'webm'],
+          maxFileSize: 600 * 1024 * 1024, // 600MB
+          multiple: false,
+          theme: 'minimal',
+          styles: {
+            palette: {
+              window: "#FFFFFF",
+              windowBorder: "#90A0B3",
+              tabIcon: "#F77F00",
+              menuIcons: "#5A616A",
+              textDark: "#000000",
+              textLight: "#FFFFFF",
+              link: "#F77F00",
+              action: "#F77F00",
+              inactiveTabIcon: "#0E2F5A",
+              error: "#F44235",
+              inProgress: "#F77F00",
+              complete: "#20B832",
+              sourceBg: "#E4EBF1"
+            }
+          }
+        },
+        (error: any, result: any) => {
+          if (!error && result && result.event === "success") {
+            handleFormChange('cloudinary_public_id', result.info.public_id);
+            setPreviewFile(result.info.secure_url);
+            setUploadProgress(100);
+          }
+        }
+      );
+      widget.open();
+    } catch (err: any) {
+      console.error("Widget init failed", err);
+      setError(err.message || "Failed to initialize Cloudinary Widget.");
+    }
+  };
 
   const handleDelete = async (id: string) => {
     await adminService.deleteVideo(id)
@@ -650,26 +715,49 @@ export default function AdminDashboard() {
                     className="sm:col-span-2"
                   >
                     <label className="block text-sm font-medium text-gray-700 mb-2">Video File *</label>
-                    <div
-                      className="w-full rounded-xl border-2 border-dashed border-gray-200 hover:border-brand-orange transition-colors cursor-pointer"
-                      onClick={() => document.getElementById('video-upload')?.click()}
-                    >
-                      {previewFile ? (
-                        <video src={previewFile} controls className="w-full rounded-xl max-h-48 object-cover" />
-                      ) : (
-                        <div className="p-8 text-center">
-                          <Upload className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                          <p className="text-gray-400 text-sm">Click to upload video file</p>
-                          <p className="text-orange-400 text-[10px] mt-1 font-medium">Direct Cloudinary Upload: Max 600MB</p>
-                          <p className="text-gray-300 text-[10px] mt-0.5">MP4, MOV, WebM</p>
+                    <div className="space-y-4">
+                      {previewFile && (
+                        <div className="relative group">
+                          <video src={previewFile} controls className="w-full rounded-xl max-h-48 object-cover border border-gray-200" />
+                          <button 
+                            type="button"
+                            onClick={() => { setPreviewFile(null); handleFormChange('cloudinary_public_id', null); }}
+                            className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       )}
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div
+                          className={`w-full p-6 rounded-xl border-2 border-dashed transition-colors cursor-pointer text-center ${
+                            previewFile ? 'border-gray-200 opacity-50' : 'border-gray-200 hover:border-brand-orange'
+                          }`}
+                          onClick={() => !previewFile && document.getElementById('video-upload')?.click()}
+                        >
+                          <Upload className="w-6 h-6 text-gray-300 mx-auto mb-2" />
+                          <p className="text-gray-400 text-xs font-semibold">Standard Upload</p>
+                          <p className="text-gray-400 text-[10px]">(Best for < 100MB)</p>
+                        </div>
+
+                        <div
+                          className={`w-full p-6 rounded-xl border-2 border-brand-orange bg-orange-50 transition-colors cursor-pointer text-center ${
+                            previewFile ? 'opacity-50' : 'hover:bg-orange-100'
+                          }`}
+                          onClick={() => !previewFile && openCloudinaryWidget()}
+                        >
+                          <Cloud className="w-6 h-6 text-brand-orange mx-auto mb-2" />
+                          <p className="text-brand-orange text-xs font-bold">Secure Cloud Upload</p>
+                          <p className="text-brand-orange text-[10px] font-medium">(Best for Large Videos 400MB+)</p>
+                        </div>
+                      </div>
                     </div>
+
                     <input
                       id="video-upload"
                       type="file"
                       accept="video/mp4,video/x-m4v,video/*"
-                      required={form.source_type === 'cloudinary'}
                       onChange={handleFileChange}
                       className="hidden"
                     />

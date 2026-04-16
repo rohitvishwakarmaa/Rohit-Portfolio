@@ -177,76 +177,25 @@ export const adminService = {
 
     if (payload.source_type === 'youtube') {
       youtube_id = payload.youtube_url || null
+    } else if (payload.cloudinary_public_id) {
+      // If the video was already uploaded via the Cloudinary Widget
+      public_id = payload.cloudinary_public_id
     } else if (payload.video_file) {
-      if (payload.video_file.size > 10 * 1024 * 1024) {
-        // DIRECT UPLOAD TO CLOUDINARY (For large files)
-        const sigRes = await api.get('/media/upload/video/signature')
-        const { signature, timestamp, cloud_name, api_key, folder } = sigRes.data.data
-        
-        let cloudRes;
-        try {
-          const chunkSize = 20 * 1024 * 1024; // 20MB chunks
-          const totalChunks = Math.ceil(payload.video_file.size / chunkSize);
-          const uploadId = Math.random().toString(36).substring(2, 15);
-          
-          for (let i = 0; i < totalChunks; i++) {
-            const start = i * chunkSize;
-            const end = Math.min(start + chunkSize, payload.video_file.size);
-            const blob = payload.video_file.slice(start, end);
-            
-            const cloudForm = new FormData();
-            cloudForm.append('file', blob);
-            cloudForm.append('api_key', api_key);
-            cloudForm.append('timestamp', String(timestamp));
-            cloudForm.append('signature', signature);
-            cloudForm.append('folder', folder);
-            
-            const contentRange = `bytes ${start}-${end - 1}/${payload.video_file.size}`;
-            
-            cloudRes = await axios.post(
-              `https://api.cloudinary.com/v1_1/${cloud_name}/video/upload`,
-              cloudForm,
-              {
-                headers: {
-                  'X-Unique-Upload-Id': uploadId,
-                  'Content-Range': contentRange
-                },
-                onUploadProgress: (progressEvent) => {
-                  if (onProgress && progressEvent.loaded) {
-                    const currentProgress = Math.round(((start + progressEvent.loaded) * 100) / payload.video_file.size);
-                    onProgress(Math.min(currentProgress, 99)); // Keep at 99 until last chunk
-                  }
-                },
-              }
-            );
+      // Fallback for small files or cases where widget isn't used
+      const videoForm = new FormData()
+      videoForm.append('file', payload.video_file)
+      const mediaRes = await api.post('/media/upload/video', videoForm, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          if (onProgress && progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+            onProgress(percentCompleted)
           }
-          if (onProgress) onProgress(100);
-        } catch (error: any) {
-          console.error("DEBUG: Direct Chunked Cloudinary Upload Failed:", {
-            error,
-            response: error.response?.data,
-            message: error.message
-          });
-          throw new Error(`Cloudinary Direct Upload Failed: ${error.response?.data?.error?.message || error.message || 'Check network connection'}`);
-        }
-        public_id = cloudRes.data.public_id;
-      } else {
-        // SERVER UPLOAD (For small files)
-        const videoForm = new FormData()
-        videoForm.append('file', payload.video_file)
-        const mediaRes = await api.post('/media/upload/video', videoForm, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-          onUploadProgress: (progressEvent) => {
-            if (onProgress && progressEvent.total) {
-              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-              onProgress(percentCompleted)
-            }
-          },
-        })
-        public_id = mediaRes.data.data.public_id
-      }
+        },
+      })
+      public_id = mediaRes.data.data.public_id
     } else {
-      throw new Error('Video file or YouTube URL is required')
+      throw new Error('Video file, Cloudinary ID, or YouTube URL is required')
     }
 
 
@@ -320,6 +269,16 @@ export const adminService = {
     if (thumbnailUrl) updatePayload.thumbnail_url = thumbnailUrl
 
     const res = await api.put(`/ads/${id}`, updatePayload)
+    return res.data.data
+  },
+
+  async getCloudinarySignature(): Promise<any> {
+    const res = await api.get('/media/upload/video/signature')
+    return res.data.data
+  },
+
+  async signWidgetParams(params: any): Promise<any> {
+    const res = await api.post('/media/upload/video/signature-widget', params)
     return res.data.data
   },
 
