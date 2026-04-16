@@ -147,6 +147,36 @@ class CloudinaryService:
             raise RuntimeError(f"Cloudinary image upload failed: {e}")
 
     @staticmethod
+    def generate_upload_signature(folder: str = "portfolio/ads") -> dict:
+        """
+        Generates a signature for direct frontend upload to Cloudinary.
+        Bypasses server body size limits (e.g. Render's 100MB limit).
+        """
+        timestamp = int(time.time())
+        # Folder must match the one used in the frontend upload call
+        params = {
+            "timestamp": timestamp,
+            "folder": folder
+        }
+        
+        # In case we want to support the same eager transformations as upload_video:
+        # params["eager"] = "sp_hd/m3u8"
+        # params["eager_async"] = "true"
+
+        signature = cloudinary.utils.api_sign_request(
+            params,
+            cloudinary.config().api_secret
+        )
+        
+        return {
+            "signature": signature,
+            "timestamp": timestamp,
+            "cloud_name": cloudinary.config().cloud_name,
+            "api_key": cloudinary.config().api_key,
+            "folder": folder
+        }
+
+    @staticmethod
     def delete_resource(public_id: str, resource_type: str = "video") -> dict:
         """
         Delete a resource from Cloudinary by its public ID.

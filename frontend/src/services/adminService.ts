@@ -1,4 +1,5 @@
 import api from './api'
+import axios from 'axios'
 import type { LoginCredentials, AuthResponse, Video, VideoUploadPayload } from '@/types'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
@@ -177,18 +178,46 @@ export const adminService = {
     if (payload.source_type === 'youtube') {
       youtube_id = payload.youtube_url || null
     } else if (payload.video_file) {
-      const videoForm = new FormData()
-      videoForm.append('file', payload.video_file)
-      const mediaRes = await api.post('/media/upload/video', videoForm, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (progressEvent) => {
-          if (onProgress && progressEvent.total) {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-            onProgress(percentCompleted)
+      if (payload.video_file.size > 10 * 1024 * 1024) {
+        // DIRECT UPLOAD TO CLOUDINARY (For large files)
+        const sigRes = await api.get('/media/upload/video/signature')
+        const { signature, timestamp, cloud_name, api_key, folder } = sigRes.data.data
+        
+        const cloudForm = new FormData()
+        cloudForm.append('file', payload.video_file)
+        cloudForm.append('api_key', api_key)
+        cloudForm.append('timestamp', String(timestamp))
+        cloudForm.append('signature', signature)
+        cloudForm.append('folder', folder)
+
+        const cloudRes = await axios.post(
+          `https://api.cloudinary.com/v1_1/${cloud_name}/video/upload`,
+          cloudForm,
+          {
+            onUploadProgress: (progressEvent) => {
+              if (onProgress && progressEvent.total) {
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+                onProgress(percentCompleted)
+              }
+            },
           }
-        },
-      })
-      public_id = mediaRes.data.data.public_id
+        )
+        public_id = cloudRes.data.public_id
+      } else {
+        // SERVER UPLOAD (For small files)
+        const videoForm = new FormData()
+        videoForm.append('file', payload.video_file)
+        const mediaRes = await api.post('/media/upload/video', videoForm, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (progressEvent) => {
+            if (onProgress && progressEvent.total) {
+              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+              onProgress(percentCompleted)
+            }
+          },
+        })
+        public_id = mediaRes.data.data.public_id
+      }
     } else {
       throw new Error('Video file or YouTube URL is required')
     }

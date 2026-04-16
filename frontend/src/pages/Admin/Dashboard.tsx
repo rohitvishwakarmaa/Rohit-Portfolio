@@ -196,6 +196,12 @@ export default function AdminDashboard() {
       if (form.source_type === 'youtube' && !form.youtube_url) {
         throw new Error('Please enter a YouTube URL.')
       }
+
+      // Pre-check file size (600MB limit for Cloudinary direct upload)
+      if (form.video_file && form.video_file.size > 600 * 1024 * 1024) {
+        throw new Error(`Video file is too large (${(form.video_file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed is 600MB. Please compress your video.`)
+      }
+
       setUploadProgress(0)
       const newVideo = await adminService.uploadVideo(form, (p) => setUploadProgress(p))
       setVideos((v) => [newVideo, ...v])
@@ -209,9 +215,23 @@ export default function AdminDashboard() {
       setUploadProgress(0)
       setActiveTab('videos')
     } catch (err: any) {
-
-      console.error(err)
-      setError(err.response?.data?.detail || err.message || 'Something went wrong during upload.')
+      console.error('Upload error:', err)
+      
+      let errorMsg = 'Something went wrong during upload.'
+      
+      if (err.response?.status === 413) {
+        errorMsg = 'The video file is too large for the server (Max 100MB). Please compress it and try again.'
+      } else if (err.response?.data?.error?.message) {
+        errorMsg = err.response.data.error.message
+      } else if (err.response?.data?.detail) {
+        errorMsg = typeof err.response.data.detail === 'string' 
+          ? err.response.data.detail 
+          : JSON.stringify(err.response.data.detail)
+      } else {
+        errorMsg = err.message || errorMsg
+      }
+      
+      setError(errorMsg)
     } finally {
       setIsUploading(false)
     }
@@ -640,14 +660,15 @@ export default function AdminDashboard() {
                         <div className="p-8 text-center">
                           <Upload className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                           <p className="text-gray-400 text-sm">Click to upload video file</p>
-                          <p className="text-gray-300 text-xs mt-1">MP4, MOV, WebM (max 100MB)</p>
+                          <p className="text-orange-400 text-[10px] mt-1 font-medium">Direct Cloudinary Upload: Max 600MB</p>
+                          <p className="text-gray-300 text-[10px] mt-0.5">MP4, MOV, WebM</p>
                         </div>
                       )}
                     </div>
                     <input
                       id="video-upload"
                       type="file"
-                      accept="video/*"
+                      accept="video/mp4,video/x-m4v,video/*"
                       required={form.source_type === 'cloudinary'}
                       onChange={handleFileChange}
                       className="hidden"

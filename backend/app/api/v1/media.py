@@ -17,15 +17,24 @@ MAX_VIDEO_SIZE = 100 * 1024 * 1024  # 100 MB Limit
 ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"]
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB Limit
 
+@router.get("/upload/video/signature")
+async def get_video_upload_signature(
+    # current_user: UserModel = Depends(deps.get_current_active_superuser)
+) -> Any:
+    """
+    Get a signed signature for direct frontend upload to Cloudinary.
+    Required for files > 100MB to bypass Render proxy limits.
+    """
+    signature_data = cloudinary_svc.generate_upload_signature("portfolio/ads")
+    return success_response(signature_data)
+
+
 @router.post("/upload/video", response_model=None)
 async def upload_media_video(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     # current_user: UserModel = Depends(deps.get_current_active_superuser) # TEMP DISABLED FOR DEBUG
 ) -> Any:
-    """
-    Upload a video file to Cloudinary and return the public_id and details.
-    """
     print(f"--- UPLOAD START (AUTH DISABLED): {file.filename} ---")
     print(f"STEP 1: SKIPPED AUTH CHECK for debugging.")
 
