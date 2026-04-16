@@ -125,6 +125,7 @@ async def login_access_token(
 @router.post("/verify-otp")
 async def verify_otp(
     payload: OTPVerify,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(deps.get_db)
 ) -> Any:
     """Verifies OTP and returns full tokens."""
