@@ -54,7 +54,11 @@ async def create_indexes():
         
         # Refresh tokens
         await db_instance.db["refresh_tokens"].create_index("token", unique=True)
-        await db_instance.db["refresh_tokens"].create_index("expires_at", expireAfterSeconds=0) # Automatically delete expired tokens from Database (TTL index)
+        await db_instance.db["refresh_tokens"].create_index("expires_at", expireAfterSeconds=0)
+        
+        # Password reset tokens
+        await db_instance.db["password_reset_tokens"].create_index("token", unique=True)
+        await db_instance.db["password_reset_tokens"].create_index("expires_at", expireAfterSeconds=0) # TTL index
         
         logger.info("MongoDB indexes verified.")
     except Exception as e:

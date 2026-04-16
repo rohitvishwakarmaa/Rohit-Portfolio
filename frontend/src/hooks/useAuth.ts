@@ -10,6 +10,7 @@ export const useAuth = () => {
 
   const handleLogin = useCallback(
     async (credentials: LoginCredentials) => {
+      if (isLoading) return { status: 'loading' }
       setIsLoading(true)
       setError(null)
       try {
@@ -29,11 +30,12 @@ export const useAuth = () => {
         setIsLoading(false)
       }
     },
-    [login]
+    [isLoading, login]
   )
 
   const handleVerifyOTP = useCallback(
     async (username: string, otp: string) => {
+      if (isLoading) return false
       setIsLoading(true)
       setError(null)
       try {
@@ -50,7 +52,7 @@ export const useAuth = () => {
         setIsLoading(false)
       }
     },
-    [login]
+    [isLoading, login]
   )
 
   const handleResendOTP = useCallback(
@@ -72,6 +74,7 @@ export const useAuth = () => {
 
   // ── Forgot Password ──────────────────────────────────────────────────────
   const handleForgotPassword = useCallback(async (email: string) => {
+    if (isLoading) return false
     setIsLoading(true)
     setError(null)
     try {
@@ -83,9 +86,10 @@ export const useAuth = () => {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [isLoading])
 
   const handleVerifyForgotPasswordOTP = useCallback(async (email: string, otp: string) => {
+    if (isLoading) return null
     setIsLoading(true)
     setError(null)
     try {
@@ -97,9 +101,10 @@ export const useAuth = () => {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [isLoading])
 
   const handleResetPassword = useCallback(async (resetToken: string, newPassword: string) => {
+    if (isLoading) return false
     setIsLoading(true)
     setError(null)
     try {
@@ -111,7 +116,7 @@ export const useAuth = () => {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [isLoading])
 
   const handleLogout = useCallback(() => {
     logout()

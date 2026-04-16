@@ -325,26 +325,49 @@ async def reset_password(
 
     user_id = token_data.get("sub")
 
-    # Verify token is not already used
-    token_doc = await db["password_reset_tokens"].find_one({
-        "token": payload.reset_token,
-        "is_used": False,
-    })
+    # Atomic check and mark as used to prevent race conditions (double submission)
+    token_doc = await db["password_reset_tokens"].find_one_and_update(
+        {
+            "token": payload.reset_token,
+            "is_used": False,
+        },
+        {"$set": {"is_used": True}},
+        return_document=False # Returns the document BEFORE update
+    )
+
     if not token_doc:
+        logger.warning(f"Reset attempt with used or invalid token: {payload.reset_token[:15]}...")
         raise CustomException("Reset token already used or invalid", status_code=status.HTTP_400_BAD_REQUEST)
 
-    # Mark token as used
-    await db["password_reset_tokens"].update_one(
-        {"token": payload.reset_token},
-        {"$set": {"is_used": True}},
-    )
+    # Double check expiry from DB just in case JWT decode missed it somehow or we want stricter DB control
+    if token_doc.get("expires_at"):
+        expires_at = token_doc["expires_at"]
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
+            logger.warning(f"Reset attempt with expired token in DB for user {user_id}")
+            raise CustomException("Reset token expired", status_code=status.HTTP_400_BAD_REQUEST)
 
     # Update password
     from bson import ObjectId
-    hashed = security.get_password_hash(payload.new_password)
-    await db["users"].update_one(
-        {"_id": ObjectId(user_id)},
-        {"$set": {"hashed_password": hashed}},
-    )
+    try:
+        hashed = security.get_password_hash(payload.new_password)
+        result = await db["users"].update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": {
+                "hashed_password": hashed,
+                "updated_at": datetime.now(timezone.utc)
+            }},
+        )
+        if result.matched_count == 0:
+            logger.error(f"User {user_id} not found during password reset after token validation")
+            raise CustomException("Account not found", status_code=status.HTTP_404_NOT_FOUND)
+            
+        logger.info(f"Password successfully reset for user {user_id}")
+    except Exception as e:
+        # If user update fails, we already marked the token as used.
+        # This is a rare edge case, but for high security we might want to keep it used to prevent re-tries with same token.
+        logger.error(f"Failed to update password for {user_id}: {str(e)}")
+        raise CustomException("Failed to reset password. Please try the process again.", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return success_response(data={"message": "Password reset successfully. Please log in."})
