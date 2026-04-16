@@ -46,7 +46,7 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def root():
-    return {"message": f"Welcome to {settings.PROJECT_NAME} (v1.0.1 - 2026-04-16 10:45)"}
+    return {"message": f"Welcome to {settings.PROJECT_NAME}"}
 
 # ── CORS — OUTERMOST middleware (handles OPTIONS preflight first) ──────────────
 # ⚠️  No wildcard regex — only explicitly configured origins are allowed.
