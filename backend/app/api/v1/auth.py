@@ -154,8 +154,11 @@ async def verify_otp(
         }
     ))
     
-    cookie_samesite = "none" if settings.ENVIRONMENT == "production" else "lax"
-    cookie_secure = True if settings.ENVIRONMENT == "production" else False
+    # Improved Cookie Policy for Production/Cross-Domain (Vercel + Render)
+    # Cross-site cookies MUST be SameSite="none" and Secure=True
+    is_prod = settings.ENVIRONMENT == "production" or "onrender.com" in str(request.base_url)
+    cookie_samesite = "none" if is_prod else "lax"
+    cookie_secure = True if is_prod else False
 
     payload_response.set_cookie(
         key="access_token",
@@ -221,8 +224,9 @@ async def refresh_token(
         user_id = payload.get("sub")
         new_access_token = security.create_access_token(user_id)
         
-        cookie_samesite = "none" if settings.ENVIRONMENT == "production" else "lax"
-        cookie_secure = True if settings.ENVIRONMENT == "production" else False
+        is_prod = settings.ENVIRONMENT == "production" or "onrender.com" in str(request.base_url)
+        cookie_samesite = "none" if is_prod else "lax"
+        cookie_secure = True if is_prod else False
         
         payload_response = JSONResponse(content=success_response({"message": "Token refreshed via rotation"}))
         payload_response.set_cookie("access_token", new_access_token, httponly=True, secure=cookie_secure, samesite=cookie_samesite)
@@ -245,8 +249,9 @@ async def logout(
         except Exception:
             pass
             
-    cookie_samesite = "none" if settings.ENVIRONMENT == "production" else "lax"
-    cookie_secure = True if settings.ENVIRONMENT == "production" else False
+    is_prod = settings.ENVIRONMENT == "production" or "onrender.com" in str(request.base_url)
+    cookie_samesite = "none" if is_prod else "lax"
+    cookie_secure = True if is_prod else False
 
     payload_response = JSONResponse(content=success_response({"message": "Logged out successfully"}))
     payload_response.delete_cookie("access_token", httponly=True, secure=cookie_secure, samesite=cookie_samesite)
