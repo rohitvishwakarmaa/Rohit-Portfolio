@@ -48,7 +48,10 @@ async def emergency_sync_passwords(
     db: AsyncIOMotorDatabase = Depends(deps.get_db),
 ) -> Any:
     """EMERGENCY ONLY: Syncs all passwords to 'admin123' on the live server environment."""
-    new_hash = security.get_password_hash("admin123")
+    # Use a simpler password just in case of any weirdness
+    pass_to_set = "admin123"
+    new_hash = security.get_password_hash(pass_to_set)
+    
     result = await db["users"].update_many(
         {}, 
         {"$set": {
@@ -58,7 +61,7 @@ async def emergency_sync_passwords(
     )
     return {
         "status": "success",
-        "message": f"Emergency: Synchronized {result.modified_count} users to password 'admin123' using production libraries.",
+        "message": f"Passwords synced to '{pass_to_set}'. Users updated: {result.modified_count}",
     }
 
 @router.post("/login", response_model=None)
